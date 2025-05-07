@@ -1,0 +1,17 @@
+torch
+transformers
+datasets
+huggingface_hub
+pandas
+numpy
+plotly
+tqdm
+einops
+tabulate
+rich
+circuitsvis
+jaxtyping
+requests
+openai
+transformer_lens
+sae-lens
