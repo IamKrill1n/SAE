@@ -124,7 +124,7 @@ def fetch_max_activating_examples(
     act_store: ActivationsStore,
     latent_idx: int,
     total_batches: int = 100,
-    k: int = 10,
+    k: int = 15,
     buffer: int = 10,
     display: bool = False,
 ) -> list[tuple[float, list[str], int]]:

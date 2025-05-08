@@ -1,9 +1,10 @@
 from utils import *
-
-def load_model_and_sae(model_name: str, sae_id: str):
+from tabulate import tabulate
+from autointerp import get_autointerp_explanation
+def load_stuffs(model_name: str, sae_id: str):
     """
-    Loads the model and SAE with the given names.
-    Returns (model, sae, device).
+    Inputs: model_name and sae_id.
+    returns: model, sae, activation_store, and projection_onto_unembed.
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = HookedSAETransformer.from_pretrained_no_processing(model_name, device=device)
@@ -23,9 +24,12 @@ def load_model_and_sae(model_name: str, sae_id: str):
         n_batches_in_buffer=32,
         device=device,
     )
-    return model, sae, activation_store
 
-def get_dashboard_data(model, sae, activation_store, prompt: str) -> dict:
+    projection_onto_unembed = sae.W_dec @ model.W_U
+
+    return model, sae, activation_store, projection_onto_unembed
+
+def get_dashboard_data(model, sae, activation_store, projection_onto_unembed, prompt: str) -> dict:
     """
     Processes the prompt to return dashboard data:
     top latents, maximum activating examples, and top logits.
@@ -37,12 +41,11 @@ def get_dashboard_data(model, sae, activation_store, prompt: str) -> dict:
         saes=[sae],
         stop_at_layer=sae.cfg.hook_layer + 1,
     )
-    sae_acts_post = cache[f"{sae.cfg.hook_name}.hook_sae_acts_post"][0, -1, :]
-    top_latents = torch.topk(sae_acts_post, 3).indices
+    sae_acts_post = cache[f"{sae.cfg.hook_name}.hook_sae_acts_post"][0, -1, :] # Get the last token's activations
+    top_latents = torch.topk(sae_acts_post, 3).indices # Get top 3 latents
     
-    # Fetch max activating examples for the first latent
+    # Fetch max activating examples for all latents
     max_examples_list = []
-    top_logits_list = []
     for latent_idx in top_latents:
         max_examples = fetch_max_activating_examples(
             model=model,
@@ -53,9 +56,8 @@ def get_dashboard_data(model, sae, activation_store, prompt: str) -> dict:
         )
         max_examples_list.append(max_examples)
     # Get top logits for the top latents
-    projection_onto_unembed = sae.W_dec @ model.W_U
     _, topk_tokens = torch.topk(projection_onto_unembed[top_latents], 10, dim=1)
-    top_logits = [[model.to_str_tokens(token) for token in topk_tokens[i]] for i in range(len(topk_tokens))]
+    top_logits = [model.to_str_tokens(token) for i in range(len(topk_tokens)) for token in topk_tokens[i]]
 
     return {
         "top_latents": top_latents.tolist(),
@@ -63,11 +65,7 @@ def get_dashboard_data(model, sae, activation_store, prompt: str) -> dict:
         "top_logits": top_logits,
     }
 
-def display_dashboard(model, sae, act_store, prompt: str) -> None:
-    """
-    Existing function for direct command line interactive display.
-    """
-    # Existing code here…
+def display_dashboard(model, sae, act_store, projection_onto_unembed, prompt: str) -> None:
     _, cache = model.run_with_cache_with_saes(
         prompt, 
         saes=[sae], 
@@ -75,8 +73,9 @@ def display_dashboard(model, sae, act_store, prompt: str) -> None:
     )
     sae_acts_post = cache[f"{sae.cfg.hook_name}.hook_sae_acts_post"][0, -1, :]
     top_latents = torch.topk(sae_acts_post, 3).indices
-    print(top_latents)
-    for latent_idx in top_latents:
+   
+
+    for i, latent_idx in enumerate(top_latents):
         fetch_max_activating_examples(
             model=model,
             sae=sae,
@@ -84,19 +83,31 @@ def display_dashboard(model, sae, act_store, prompt: str) -> None:
             latent_idx=latent_idx,
             display=True,
         )
-    projection_onto_unembed = sae.W_dec @ model.W_U
-    _, topk_tokens = torch.topk(projection_onto_unembed[top_latents], 10, dim=1)
-    top_logits = [[model.to_str_tokens(token) for token in topk_tokens[i]] for i in range(len(topk_tokens))]
-    print("Top logits:")
-    for i, token in enumerate(topk_tokens[0]):
-        print(f"{i}: {model.to_str_tokens(token)}")
+        pos_logits, pos_token_ids = projection_onto_unembed[latent_idx].topk(10)
+        pos_tokens = model.to_str_tokens(pos_token_ids)
+        neg_logits, neg_token_ids = projection_onto_unembed[latent_idx].topk(10, largest=False)
+        neg_tokens = model.to_str_tokens(neg_token_ids)
+
+        print(
+            tabulate(
+                zip(map(repr, neg_tokens), neg_logits, map(repr, pos_tokens), pos_logits),
+                headers=["Bottom tokens", "Value", "Top tokens", "Value"],
+                tablefmt="simple_outline",
+                stralign="right",
+                numalign="left",
+                floatfmt="+.3f",
+            )
+        )
+    
 
 if __name__ == "__main__":
     # Load model and SAE
     model_name = "tiny-stories-1L-21M"  # or "gpt2-small"
-    sae_id = "sae_ex32"  # Adjust as needed
-    loaded_model, loaded_sae, loaed_act_store = load_model_and_sae(model_name, sae_id)
+    # model_name = "gpt2-small"  # Adjust as needed
+    sae_id = "16"  # Adjust as needed
+    # sae_id = "blocks.7.hook_mlp_out"  # Adjust as needed
+    loaded_model, loaded_sae, loaed_act_store, loaded_proj = load_stuffs(model_name, sae_id)
     
     # Display dashboard with a prompt
-    prompt = "Once upon a time, there was a beautiful princess"  # input("Enter a prompt: ")
-    display_dashboard(loaded_model, loaded_sae, loaed_act_store, prompt)
+    prompt = "Once upon a time, there was a beautiful princess living in the castle. One day, she kisses"  # input("Enter a prompt: ")
+    display_dashboard(loaded_model, loaded_sae, loaed_act_store, loaded_proj, prompt)
