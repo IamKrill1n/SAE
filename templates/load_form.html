@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>SAE Dashboard - Load Model & SAE</title>
+    <script>
+      // Dictionary mapping model names to their SAE options.
+      var saeOptions = {
+        "tiny-stories-1L-21M": ["sae_ex32", "sae", "4", "5", "6", "7", "8", "16"],
+        "gpt2-small": (function() {
+          var arr = [];
+          for (var i = 0; i < 12; i++) { 
+            arr.push("blocks." + i + ".hook_mlp_out"); 
+          }
+          return arr;
+        })()
+      };
+
+      // Update the SAE options when the model selection changes.
+      function updateSaeOptions() {
+        var modelSelect = document.getElementById("model");
+        var saeSelect = document.getElementById("sae");
+        var model = modelSelect.value;
+        saeSelect.innerHTML = ""; // Clear existing options.
+        var options = saeOptions[model];
+        options.forEach(function(opt) {
+          var option = document.createElement("option");
+          option.value = opt;
+          option.text = opt;
+          saeSelect.appendChild(option);
+        });
+      }
+
+      window.onload = function() {
+        updateSaeOptions();
+      };
+    </script>
+  </head>
+  <body>
+    <h1>Load Model & SAE</h1>
+    <form method="post" action="/">
+      <input type="hidden" name="action" value="load">
+      <label for="model">Model:</label>
+      <select name="model" id="model" onchange="updateSaeOptions()">
+        <option value="tiny-stories-1L-21M" selected>tiny-stories-1L-21M</option>
+        <option value="gpt2-small">gpt2-small</option>
+      </select>
+      <br><br>
+      <label for="sae">SAE ID:</label>
+      <select name="sae" id="sae">
+        {% for opt in sae_options["tiny-stories-1L-21M"] %}
+          <option value="{{ opt }}">{{ opt }}</option>
+        {% endfor %}
+      </select>
+      <br><br>
+      <input type="submit" value="Load Model & SAE">
+    </form>
+  </body>
+</html>
