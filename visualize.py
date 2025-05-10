@@ -76,13 +76,14 @@ def display_dashboard(model, sae, act_store, projection_onto_unembed, prompt: st
    
 
     for i, latent_idx in enumerate(top_latents):
-        fetch_max_activating_examples(
+        data = fetch_max_activating_examples(
             model=model,
             sae=sae,
             act_store=act_store,
             latent_idx=latent_idx,
             display=True,
         )
+        print("Autointerp explanation: ",get_autointerp_explanation(data = data)[0])
         pos_logits, pos_token_ids = projection_onto_unembed[latent_idx].topk(10)
         pos_tokens = model.to_str_tokens(pos_token_ids)
         neg_logits, neg_token_ids = projection_onto_unembed[latent_idx].topk(10, largest=False)
@@ -104,10 +105,11 @@ if __name__ == "__main__":
     # Load model and SAE
     model_name = "tiny-stories-1L-21M"  # or "gpt2-small"
     # model_name = "gpt2-small"  # Adjust as needed
-    sae_id = "16"  # Adjust as needed
+    sae_id = "sae_ex32"  # Adjust as needed
     # sae_id = "blocks.7.hook_mlp_out"  # Adjust as needed
     loaded_model, loaded_sae, loaed_act_store, loaded_proj = load_stuffs(model_name, sae_id)
     
     # Display dashboard with a prompt
-    prompt = "Once upon a time, there was a beautiful princess living in the castle. One day, she kisses"  # input("Enter a prompt: ")
-    display_dashboard(loaded_model, loaded_sae, loaed_act_store, loaded_proj, prompt)
+    while(1):
+        prompt = input("Enter a prompt: ")
+        display_dashboard(loaded_model, loaded_sae, loaed_act_store, loaded_proj, prompt)
