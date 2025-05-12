@@ -57,20 +57,6 @@ def make_token_df(tokens, len_prefix=5, len_suffix=3, model=None):
         )
     )
 
-def get_k_largest_indices(x: Float[Tensor, "batch seq"], k: int, buffer: int = 0) -> Int[Tensor, "k 2"]:
-    """
-    The indices of the top k elements in the input tensor, i.e. output[i, :] is the (batch, seqpos) value of the i-th
-    largest element in x.
-
-    Won't choose any elements within `buffer` from the start or end of their sequence.
-    """
-    if buffer > 0:
-        x = x[:, buffer:-buffer]
-    indices = x.flatten().topk(k=k).indices
-    rows = indices // x.size(1)
-    cols = indices % x.size(1) + buffer
-    return torch.stack((rows, cols), dim=1)
-
 def get_k_largest_indices(
     x: Float[Tensor, "batch seq"], k: int, buffer: int = 0, no_overlap: bool = True
 ) -> Int[Tensor, "k 2"]:
