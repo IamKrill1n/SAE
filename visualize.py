@@ -34,17 +34,85 @@ def load_stuffs(model_name: str, sae_id: str):
 
     return model, sae, activation_store, projection_onto_unembed
 
+def get_dashboard_data(model, sae, act_store, projection_onto_unembed, prompt: str) -> dict:
+    """
+    Fetches the top activations for the given prompt, the autointerp explanation, and the top and bottom logits for the latent.
+    Returns a dictionary with keys:
+      - "top_latents": list of latent indices (as ints),
+      - "max_examples": list of max activating examples (per latent),
+      - "top_logits": list of top tokens (per latent),
+      - "bottom_logits": list of bottom tokens (per latent),
+      - "top_logits_values": list of top token logit values (per latent),
+      - "bottom_logits_values": list of bottom token logit values (per latent).
+    """
+    tokenized_prompt = model.to_str_tokens(prompt)
+    print("Tokenized prompt:")
+    print(" ".join(f"{i} {token}" for i, token in enumerate(tokenized_prompt)))
+    
+    # Run model to get SAE activations
+    _, cache = model.run_with_cache_with_saes(
+        prompt,
+        saes=[sae],
+        stop_at_layer=sae.cfg.hook_layer + 1,
+    )
+    sae_acts_post = cache[f"{sae.cfg.hook_name}.hook_sae_acts_post"][0, -1, :]  # shape: (seq_length, num_latents)
+    
+    # Get top 3 latent indices (topk is applied across the token-sequence dimension)
+    top_latents_tensor = torch.topk(sae_acts_post, 3).indices
+    top_latents = top_latents_tensor.tolist()
+    
+    max_examples = []
+    top_logits_list = []
+    bottom_logits_list = []
+    top_logits_values = []
+    bottom_logits_values = []
+    
+    for latent_idx in top_latents:
+        print("Latent index:", latent_idx)
+        # Get the examples that maximally activate this latent feature
+        examples = fetch_max_activating_examples(
+            model=model,
+            sae=sae,
+            act_store=act_store,
+            latent_idx=torch.tensor(latent_idx),
+            display=False,  # Do not print here so that the dashboard remains clean.
+        )
+        max_examples.append(examples)
+        # Print the autointerp explanation for debugging/logging purposes.
+        explanation = get_autointerp_explanation(data=examples)[0]
+        print("Autointerp explanation:", explanation)
+        
+        # Get the top 10 (and bottom 10) tokens and their logit values associated with this latent via the projection.
+        pos_logits, pos_token_ids = projection_onto_unembed[latent_idx].topk(10)
+        neg_logits, neg_token_ids = projection_onto_unembed[latent_idx].topk(10, largest=False)
+        pos_tokens = model.to_str_tokens(pos_token_ids)
+        neg_tokens = model.to_str_tokens(neg_token_ids)
+        
+        top_logits_list.append(pos_tokens)
+        bottom_logits_list.append(neg_tokens)
+        top_logits_values.append(pos_logits.tolist())
+        bottom_logits_values.append(neg_logits.tolist())
+    
+    return {
+        "top_latents": top_latents,
+        "max_examples": max_examples,
+        "top_logits": top_logits_list,
+        "bottom_logits": bottom_logits_list,
+        "top_logits_values": top_logits_values,
+        "bottom_logits_values": bottom_logits_values,
+    }
+
 def display_dashboard(model, sae, act_store, projection_onto_unembed, prompt: str) -> None:
     tokenized_prompt = model.to_str_tokens(prompt)
     print("Tokenized prompt: ")
     print(" ".join(f"{id} {token}" for id, token in enumerate(tokenized_prompt)))
-    token_id = int(input("Enter token id to visualize: "))
+    # token_id = int(input("Enter token id to visualize: "))
     _, cache = model.run_with_cache_with_saes(
         prompt, 
         saes=[sae], 
         stop_at_layer=sae.cfg.hook_layer + 1,
     )
-    sae_acts_post = cache[f"{sae.cfg.hook_name}.hook_sae_acts_post"][0, token_id, :]
+    sae_acts_post = cache[f"{sae.cfg.hook_name}.hook_sae_acts_post"][0, -1, :]
     top_latents = torch.topk(sae_acts_post, 3).indices
     
 

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Model and SAE</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Load Model and SAE</h1>
+        <form action="/load" method="POST" class="mt-4">
+            <div class="form-group">
+                <label for="model_name">Model Name:</label>
+                <input type="text" class="form-control" id="model_name" name="model_name" required>
+            </div>
+            <div class="form-group">
+                <label for="sae_id">SAE ID:</label>
+                <input type="text" class="form-control" id="sae_id" name="sae_id" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Load Model</button>
+        </form>
+    </div>
+</body>
+</html>

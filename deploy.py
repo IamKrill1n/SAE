@@ -1,6 +1,5 @@
 from flask import Flask, request, render_template
-from sae_lens import SAE, HookedSAETransformer, ActivationsStore
-from visualize import load_model_and_sae, get_dashboard_data
+from visualize import load_stuffs, get_dashboard_data
 
 app = Flask(__name__)
 
@@ -8,6 +7,7 @@ app = Flask(__name__)
 loaded_model = None
 loaded_sae = None
 loaded_act_store = None
+loaded_projection_onto_unembed = None
 loaded_model_name = None
 loaded_sae_id = None
 
@@ -19,7 +19,7 @@ sae_options = {
 
 @app.route("/", methods=["GET", "POST"])
 def dashboard():
-    global loaded_model, loaded_sae, loaded_act_store, loaded_model_name, loaded_sae_id
+    global loaded_model, loaded_sae, loaded_act_store, loaded_projection_onto_unembed, loaded_model_name, loaded_sae_id
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -27,7 +27,7 @@ def dashboard():
         if action == "load":
             model_name = request.form.get("model")
             sae_id = request.form.get("sae")
-            loaded_model, loaded_sae, loaded_act_store = load_model_and_sae(model_name, sae_id)
+            loaded_model, loaded_sae, loaded_act_store, loaded_projection_onto_unembed = load_stuffs(model_name, sae_id)
             loaded_model_name = model_name
             loaded_sae_id = sae_id
             message = f"Model '{model_name}' and SAE '{sae_id}' loaded successfully."
@@ -41,10 +41,10 @@ def dashboard():
             # If selected model or sae differ from currently loaded, reload them.
             if (loaded_model is None or loaded_sae is None or
                 model_name != loaded_model_name or sae_id != loaded_sae_id):
-                loaded_model, loaded_sae, loaded_act_store = load_model_and_sae(model_name, sae_id)
+                loaded_model, loaded_sae, loaded_act_store, loaded_projection_onto_unembed = load_stuffs(model_name, sae_id)
                 loaded_model_name = model_name
                 loaded_sae_id = sae_id
-            output = get_dashboard_data(loaded_model, loaded_sae, loaded_act_store, prompt)
+            output = get_dashboard_data(loaded_model, loaded_sae, loaded_act_store, loaded_projection_onto_unembed, prompt)
             message = f"Model '{model_name}' and SAE '{sae_id}' are loaded. Dashboard results below:"
             return render_template("dashboard.html", message=message, model_name=model_name,
                                    sae_id=sae_id, output=output, prompt=prompt)

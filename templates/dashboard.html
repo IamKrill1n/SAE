@@ -1,59 +1,28 @@
-<!doctype html>
-<html>
-  <head>
-    <title>SAE Dashboard</title>
-  </head>
-  <body>
-    <h1>{{ message }}</h1>
-    <hr>
-    <h2>Run Dashboard</h2>
-    <form method="post" action="/">
-      <!-- Hidden fields preserve the loaded model selections -->
-      <input type="hidden" name="action" value="run">
-      <input type="hidden" name="model" value="{{ model_name }}">
-      <input type="hidden" name="sae" value="{{ sae_id }}">
-      <label for="prompt">Prompt:</label>
-      <br>
-      <textarea name="prompt" id="prompt" rows="3" cols="60">{{ prompt }}</textarea>
-      <br><br>
-      <input type="submit" value="Run Dashboard">
-    </form>
-    {% if output %}
-      <hr>
-      <h2>Dashboard Results</h2>
-      <p><b>Top Latents:</b> {{ output.top_latents }}</p>
-      
-      <h3>Max Activating Examples:</h3>
-      {% for i in range(output.top_latents|length) %}
-        <h4>Neuron {{ output.top_latents[i] }}</h4>
-        <ul>
-          {% for act, tokens, buff in output.max_examples[i] %}
-            <li>
-              <b>Activation:</b> {{ act }} |
-              <b>Tokens:</b> 
-              {% for token in tokens %}
-                {% if loop.index0 == buff %}
-                  <span style="color:green;">{{ token }}</span>
-                {% else %}
-                  {{ token }}
-                {% endif %}
-              {% endfor %}
-              | <b>Buffer:</b> {{ buff }}
-            </li>
-          {% endfor %}
-        </ul>
-      {% endfor %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Dashboard</h1>
+        <form action="/dashboard" method="POST">
+            <div class="form-group">
+                <label for="prompt">Enter your prompt:</label>
+                <textarea class="form-control" id="prompt" name="prompt" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
 
-      <h3>Top Logits for Top Latents:</h3>
-      {% for i in range(output.top_latents|length) %}
-         <h4>Neuron {{ output.top_latents[i] }}:</h4>
-         <ol>
-           {% for token in output.top_logits[i][:3] %}
-              <li>{{ token }}</li>
-           {% endfor %}
-         </ol>
-      {% endfor %}
-    {% endif %}
-    <p><a href="/">Reload Page</a></p>
-  </body>
+        {% if results %}
+            <h2 class="mt-5">Results</h2>
+            <div class="results">
+                <pre>{{ results }}</pre>
+            </div>
+        {% endif %}
+    </div>
+</body>
 </html>
