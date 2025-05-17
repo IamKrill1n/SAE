@@ -57,6 +57,8 @@ def display_dashboard(model, sae, act_store, projection_onto_unembed, prompt: st
     print()  # for spacing
     
     token_id = int(input("Enter token id to visualize: "))
+    print("Finding features activated for token", tokenized_prompt[token_id])
+
     _, cache = model.run_with_cache_with_saes(
         prompt, 
         saes=[sae], 
@@ -72,7 +74,7 @@ def display_dashboard(model, sae, act_store, projection_onto_unembed, prompt: st
             sae=sae,
             act_store=act_store,
             latent_idx=latent_idx,
-            k=5,
+            k=15,
             display=True,
         )
         print("Autointerp explanation: ", get_autointerp_explanation(data=data)[0])
@@ -97,7 +99,7 @@ if __name__ == "__main__":
     # model_name = "tiny-stories-1L-21M"  # or "gpt2-small"
     model_name = "gpt2-small"  # Adjust as needed
     # sae_id = "sae_ex32"  # Adjust as needed
-    sae_id = "blocks.7.hook_mlp_out"  # Adjust as needed
+    sae_id = "blocks.0.hook_mlp_out"  # Adjust as needed
     loaded_model, loaded_sae, loaed_act_store, loaded_proj = load_stuffs(model_name, sae_id)
     
     # Display dashboard with a prompt
