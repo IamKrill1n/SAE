@@ -2,6 +2,7 @@ from utils import *
 from tabulate import tabulate
 from autointerp import get_autointerp_explanation
 import warnings
+import argparse
 warnings.filterwarnings("ignore")
 
 def load_stuffs(model_name: str, sae_id: str):
@@ -95,15 +96,15 @@ def display_dashboard(model, sae, act_store, projection_onto_unembed, prompt: st
         )
 
 if __name__ == "__main__":
-    # Load model and SAE
-    # model_name = "tiny-stories-1L-21M"  # or "gpt2-small"
-    model_name = "gpt2-small"  # Adjust as needed
-    # sae_id = "sae_ex32"  # Adjust as needed
-    sae_id = "blocks.0.hook_mlp_out"  # Adjust as needed
-    loaded_model, loaded_sae, loaed_act_store, loaded_proj = load_stuffs(model_name, sae_id)
+    parser = argparse.ArgumentParser(description="Visualize SAE features for a given model and SAE id.")
+    parser.add_argument("--model_name", type=str, required=True, help="Name of the model (e.g., 'gpt2-small')")
+    parser.add_argument("--sae_id", type=str, required=True, help="SAE id (e.g., 'blocks.0.hook_mlp_out')")
+    args = parser.parse_args()
+
+    loaded_model, loaded_sae, loaed_act_store, loaded_proj = load_stuffs(args.model_name, args.sae_id)
     
     # Display dashboard with a prompt
-    while(1):
+    while True:
         prompt = input("Enter a prompt: ")
         if prompt.lower() == "exit()":
             break
