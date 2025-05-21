@@ -33,42 +33,6 @@ def load_stuffs(model_name: str, sae_id: str):
 
     return model, sae, activation_store, projection_onto_unembed
 
-def get_dashboard_data(model, sae, activation_store, projection_onto_unembed, prompt: str) -> dict:
-    """
-    Processes the prompt to return dashboard data:
-    top latents, maximum activating examples, and top logits.
-    """
-    
-    # Get top activating latents for the prompt
-    _, cache = model.run_with_cache_with_saes(
-        prompt, 
-        saes=[sae],
-        stop_at_layer=sae.cfg.hook_layer + 1,
-    )
-    sae_acts_post = cache[f"{sae.cfg.hook_name}.hook_sae_acts_post"][0, -1, :] # Get the last token's activations
-    top_latents = torch.topk(sae_acts_post, 3).indices # Get top 3 latents
-    
-    # Fetch max activating examples for all latents
-    max_examples_list = []
-    for latent_idx in top_latents:
-        max_examples = fetch_max_activating_examples(
-            model=model,
-            sae=sae,
-            act_store=activation_store,
-            latent_idx=latent_idx,
-            display=False,
-        )
-        max_examples_list.append(max_examples)
-    # Get top logits for the top latents
-    _, topk_tokens = torch.topk(projection_onto_unembed[top_latents], 10, dim=1)
-    top_logits = [model.to_str_tokens(token) for i in range(len(topk_tokens)) for token in topk_tokens[i]]
-
-    return {
-        "top_latents": top_latents.tolist(),
-        "max_examples": max_examples_list,
-        "top_logits": top_logits,
-    }
-
 def display_dashboard(model, sae, act_store, projection_onto_unembed, latent_idx) -> None:
     
     print("Latent index: ", latent_idx)
